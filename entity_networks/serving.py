@@ -22,10 +22,14 @@ def generate_serving_input_fn(metadata):
             shape=[1, max_query_length],
             dtype=tf.int64,
             name='query')
-
+        candidates_placeholder = tf.placeholder(
+            shape=[1, 10],
+            dtype=tf.int64,
+            name='candidates')
         feature_placeholders = {
             'story': story_placeholder,
-            'query': query_placeholder
+            'query': query_placeholder,
+            'candidates': candidates_placeholder
         }
 
         features = {

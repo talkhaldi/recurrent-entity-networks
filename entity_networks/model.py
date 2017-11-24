@@ -155,7 +155,7 @@ def get_outputs(inputs, params):
         # Output Module
         outputs = get_output_module(
             last_state=last_state,
-            encoded_query=encoded_query,
+           encoded_query=encoded_query,
             num_blocks=num_blocks,
             vocab_size=vocab_size,
             initializer=normal_initializer,
@@ -166,9 +166,43 @@ def get_outputs(inputs, params):
 
         return outputs
 
-def get_predictions(outputs):
+def get_predictions(outputs, candidates):
     "Return the actual predictions for use with evaluation metrics or TF Serving."
-    predictions = tf.argmax(outputs, axis=-1)
+    
+    candsize = candidates.shape[2].value
+    candidates = tf.reshape(candidates,[-1,candsize])
+    #print(candidates)
+    vocsize = outputs.shape[1]
+
+    #Generate an array to fix the indices to match the flatter array
+    f = tf.range(tf.shape(outputs, out_type=tf.int64)[0], dtype=tf.int64)*vocsize
+    f = tf.reshape(f,[-1,1])
+    #Flatten the fixed candidate array
+    nidx = tf.reshape(tf.add(f, candidates),[-1])
+    #Flatten the outputs
+    foutputs = tf.reshape(outputs,[-1])
+    #Get the probabilities of the candidate words only by index
+    onlycandidates = tf.reshape(tf.gather(foutputs,nidx),[-1,candsize])
+    #print(candidates)
+    #print(onlycandidates)
+    #Find the index of the highest prob (index in respect to the candidate size)
+    predictionsidx = tf.argmax(onlycandidates, axis=-1)
+    #print(predictions)
+    predictionsidx = tf.reshape(predictionsidx,[-1,1])
+
+    f = tf.range(tf.shape(candidates, out_type=tf.int64)[0], dtype=tf.int64)*candsize
+    f = tf.reshape(f,[-1,1])
+    #print("candidates ", candidates)
+    #print("f ", f)
+
+    nidx = tf.reshape(tf.add(f,predictionsidx), [-1])
+    fcandidates = tf.reshape(candidates,[-1])
+    
+    predictions = tf.reshape(tf.gather(fcandidates,nidx),[-1,1])
+    #predictions = tf.argmax(correctpred, axis=-1)
+    #predictionsidx =  candidates[predictions]
+    
+    #print(predictions)
     return predictions
 
 def get_loss(outputs, labels, mode):
@@ -177,7 +211,6 @@ def get_loss(outputs, labels, mode):
     loss = None
     if mode == tf.contrib.learn.ModeKeys.INFER:
         return loss
-
     loss = tf.losses.sparse_softmax_cross_entropy(
         logits=outputs,
         labels=labels)
@@ -204,7 +237,7 @@ def get_train_op(loss, params, mode):
         loss=loss,
         global_step=global_step,
         learning_rate=learning_rate,
-        optimizer='Adam',
+        optimizer='Adagrad',
         clip_gradients=params['clip_gradients'],
         gradient_noise_scale=params['gradient_noise_scale'],
         summaries=OPTIMIZER_SUMMARIES)
@@ -213,9 +246,11 @@ def get_train_op(loss, params, mode):
 
 def model_fn(features, labels, mode, params):
     "Return ModelFnOps for use with Estimator."
-
+    #print("features: ", features)
+    #print(features['candidates'])
     outputs = get_outputs(features, params)
-    predictions = get_predictions(outputs)
+    
+    predictions = get_predictions(outputs, features['candidates'])
     loss = get_loss(outputs, labels, mode)
     train_op = get_train_op(loss, params, mode)
 

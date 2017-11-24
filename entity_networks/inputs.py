@@ -13,7 +13,7 @@ def generate_input_fn(filename, metadata, batch_size, num_epochs=None, shuffle=F
         max_story_length = metadata['max_story_length']
         max_sentence_length = metadata['max_sentence_length']
         max_query_length = metadata['max_query_length']
-
+        max_candidates_length = 10
         with tf.device('/cpu:0'):
             story_feature = tf.FixedLenFeature(
                 shape=[max_story_length, max_sentence_length],
@@ -24,11 +24,15 @@ def generate_input_fn(filename, metadata, batch_size, num_epochs=None, shuffle=F
             answer_feature = tf.FixedLenFeature(
                 shape=[],
                 dtype=tf.int64)
+            candidates_feature = tf.FixedLenFeature(
+                shape=[1, max_candidates_length],
+                dtype=tf.int64)
 
             features = {
                 'story': story_feature,
                 'query': query_feature,
                 'answer': answer_feature,
+                'candidates': candidates_feature,
             }
 
             record_features = tf.contrib.learn.read_batch_record_features(
@@ -41,10 +45,12 @@ def generate_input_fn(filename, metadata, batch_size, num_epochs=None, shuffle=F
             story = record_features['story']
             query = record_features['query']
             answer = record_features['answer']
+            candidates = record_features['candidates']
 
             features = {
                 'story': story,
                 'query': query,
+                'candidates': candidates,
             }
 
             return features, answer

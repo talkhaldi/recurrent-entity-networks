@@ -9,6 +9,7 @@ import tensorflow as tf
 from tensorflow.contrib.learn.python.learn import learn_runner
 
 from entity_networks.experiment import generate_experiment_fn
+import os
 
 def main():
     "Entrypoint for training."
@@ -17,7 +18,7 @@ def main():
     parser.add_argument(
         '--data-dir',
         help='Directory containing data',
-        default='data/babi/records/')
+        default='CBT/data/records/')
     parser.add_argument(
         '--dataset-id',
         help='Unique id identifying dataset',
@@ -51,8 +52,17 @@ def main():
         help='Gradient noise scale',
         default=0.005,
         type=float)
+    parser.add_argument(
+        '--gpu',
+        help='GPU ID to use',
+        default=0,
+        type=int)
 
     args = parser.parse_args()
+
+    os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu)
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
     tf.logging.set_verbosity(tf.logging.INFO)
 
