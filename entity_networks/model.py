@@ -169,40 +169,42 @@ def get_outputs(inputs, params):
 def get_predictions(outputs, candidates):
     "Return the actual predictions for use with evaluation metrics or TF Serving."
     
+    ### The update here is that, since CBT has 10 candidates, we select them from the vocabsized softmax,
+    ### we argmax over the probabilites of the 10 candidates, selecting the index of the highest one.
+    ### Then we retreive the original softmax index through the candidates index list.
+    ### In these two steps of getting indecies by an index array, we fix the index list to let it match the flattened arrays
+    ### then we flatten both arrays, use tf.gather then reshape again
+    
     candsize = candidates.shape[2].value
     candidates = tf.reshape(candidates,[-1,candsize])
-    #print(candidates)
+  
     vocsize = outputs.shape[1]
 
-    #Generate an array to fix the indices to match the flatter array
+    #Generate an array to fix the indices to match the flatted array
     f = tf.range(tf.shape(outputs, out_type=tf.int64)[0], dtype=tf.int64)*vocsize
     f = tf.reshape(f,[-1,1])
+    
     #Flatten the fixed candidate array
     nidx = tf.reshape(tf.add(f, candidates),[-1])
+    
     #Flatten the outputs
     foutputs = tf.reshape(outputs,[-1])
+    
     #Get the probabilities of the candidate words only by index
     onlycandidates = tf.reshape(tf.gather(foutputs,nidx),[-1,candsize])
-    #print(candidates)
-    #print(onlycandidates)
+    
     #Find the index of the highest prob (index in respect to the candidate size)
     predictionsidx = tf.argmax(onlycandidates, axis=-1)
-    #print(predictions)
     predictionsidx = tf.reshape(predictionsidx,[-1,1])
 
     f = tf.range(tf.shape(candidates, out_type=tf.int64)[0], dtype=tf.int64)*candsize
     f = tf.reshape(f,[-1,1])
-    #print("candidates ", candidates)
-    #print("f ", f)
 
     nidx = tf.reshape(tf.add(f,predictionsidx), [-1])
     fcandidates = tf.reshape(candidates,[-1])
     
     predictions = tf.reshape(tf.gather(fcandidates,nidx),[-1,1])
-    #predictions = tf.argmax(correctpred, axis=-1)
-    #predictionsidx =  candidates[predictions]
     
-    #print(predictions)
     return predictions
 
 def get_loss(outputs, labels, mode):
@@ -237,7 +239,7 @@ def get_train_op(loss, params, mode):
         loss=loss,
         global_step=global_step,
         learning_rate=learning_rate,
-        optimizer='Adagrad',
+        optimizer='Adam',
         clip_gradients=params['clip_gradients'],
         gradient_noise_scale=params['gradient_noise_scale'],
         summaries=OPTIMIZER_SUMMARIES)
@@ -246,8 +248,7 @@ def get_train_op(loss, params, mode):
 
 def model_fn(features, labels, mode, params):
     "Return ModelFnOps for use with Estimator."
-    #print("features: ", features)
-    #print(features['candidates'])
+
     outputs = get_outputs(features, params)
     
     predictions = get_predictions(outputs, features['candidates'])
