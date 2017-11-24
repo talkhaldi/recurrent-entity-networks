@@ -1,4 +1,4 @@
-#Introduction
+# Introduction
 
 This is an update to the implementation of EntNet done by [jimfleming](https://github.com/jimfleming/recurrent-entity-networks) to let it take [Children Book Test](https://research.fb.com/downloads/babi/) as input.
 
@@ -11,34 +11,14 @@ Recurrent Entity Networks](https://arxiv.org/abs/1612.03969). This paper introdu
 
 ## Results
 
-Percent error for each task, comparing those in the paper to the implementation contained in this repository.
+Accuracy of EntNet when run on CBT according to the paper. Actual results with this repo will be posted later.
 
-Task | EntNet (paper) | EntNet (repo)
---- | --- | ---
-1: 1 supporting fact | 0 | 0
-2: 2 supporting facts | 0.1 | 3.0
-3: 3 supporting facts | 4.1 | ?
-4: 2 argument relations | 0 | 0
-5: 3 argument relations | 0.3 | ?
-6: yes/no questions | 0.2 | 0
-7: counting | 0 | 0
-8: lists/sets | 0.5 | 0
-9: simple negation | 0.1 | 0
-10: indefinite knowledge | 0.6 | 0
-11: basic coreference | 0.3 | 0
-12: conjunction | 0 | 0
-13: compound coreference | 1.3 | 0
-14: time reasoning | 0 | 0
-15: basic deduction | 0 | 0
-16: basic induction | 0.2 | 0
-17: positional reasoning | 0.5 | 1.7
-18: size reasoning | 0.3 | 1.5
-19: path finding | 2.3 | 0
-20: agents motivation | 0 | 0
-**Failed Tasks** | 0 | ?
-**Mean Error** | 0.5 | ?
+Model |  Named Entities | Common Nouns
+--- | --- | --- 
+EntNet (general) | 0.484 | 0.540
+EntNet (simple) | 0.616 | 0.588
 
-NOTE: Some of these tasks (16 and 19, in particular) required a change in learning rate schedule to reliably converge.
+THis is the ned of the table
 
 ## Setup
 
