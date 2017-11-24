@@ -1,3 +1,7 @@
+#Introduction
+
+This is an update to the implementation of EntNet done by [jimfleming](https://github.com/jimfleming/recurrent-entity-networks) to let it take [Children Book Test](https://research.fb.com/downloads/babi/) as input.
+
 # Recurrent Entity Networks
 
 This repository contains an independent TensorFlow implementation of recurrent entity networks from [Tracking the World State with
@@ -38,18 +42,13 @@ NOTE: Some of these tasks (16 and 19, in particular) required a change in learni
 
 ## Setup
 
-1. Download the datasets by running [download_babi.sh](download_babi.sh) or from [The bAbI Project](https://research.facebook.com/research/babi/).
+1. Download the dataset CBTest.tgz from [The bAbI Project](https://research.fb.com/downloads/babi/) and extract it to a folder called CBT.
 2. Run [prep_data.py](entity_networks/prep_data.py) which will convert the datasets into [TFRecords](https://www.tensorflow.org/programmers_guide/reading_data#standard_tensorflow_format).
-3. Run `python -m entity_networks.main` to begin training on QA1.
+3. Run `python -m entity_networks.main` adding the required arguments. --help will show them.
 
 ## Major Dependencies
 
-- TensorFlow v1.1.0
+- TensorFlow v1.4.0
 
 (For additional dependencies see [requirements.txt](requirements.txt))
 
-## Thanks!
-
-- Thanks to Mikael Henaff for providing details about their paper over Thanksgiving break. :)
-- Thanks to Andy Zhang ([@zhangandyx](https://twitter.com/zhangandyx)) for helping me troubleshoot numerical instabilities.
-- Thanks to Mike Young ([@mikalyoung](https://github.com/mikalyoung)) for providing results on some of the longer tasks.
