@@ -18,8 +18,6 @@ Model |  Named Entities | Common Nouns
 EntNet (general) | 0.484 | 0.540
 EntNet (simple) | 0.616 | 0.588
 
-THis is the ned of the table
-
 ## Setup
 
 1. Download the dataset CBTest.tgz from [The bAbI Project](https://research.fb.com/downloads/babi/) and extract it to a folder called CBT.
