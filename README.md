@@ -20,7 +20,7 @@ EntNet (simple) | 0.616 | 0.588
 
 ## Setup
 
-1. Download the dataset CBTest.tgz from [The bAbI Project](https://research.fb.com/downloads/babi/) and extract it to a folder called CBT.
+1. Download the dataset CBTest.tgz from [here](https://research.fb.com/downloads/babi/) and extract it to a folder called CBT.
 2. Run [prep_data.py](entity_networks/prep_data.py) which will convert the datasets into [TFRecords](https://www.tensorflow.org/programmers_guide/reading_data#standard_tensorflow_format).
 3. Run `python -m entity_networks.main` adding the required arguments. --help will show them.
 
