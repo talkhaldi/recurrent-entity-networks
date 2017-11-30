@@ -42,6 +42,7 @@ def get_output_module(
         encoded_query,
         num_blocks,
         vocab_size,
+        candidates,
         activation=tf.nn.relu,
         initializer=None,
         scope=None):
@@ -71,6 +72,18 @@ def get_output_module(
 
         q = tf.squeeze(encoded_query, axis=1)
         y = tf.matmul(activation(q + tf.matmul(u, H)), R)
+
+        #Normalize the candidates only and set everything else to 0
+        #k_hot = tf.reduce_max(tf.one_hot(candidates, vocab_size),axis=1)
+         #print("k-hot ", k_hot)
+        #onlyCand = y*k_hot
+         #print(onlyCand)
+        #summ = tf.reshape(tf.reduce_sum(onlyCand,axis=1),[-1,1])
+         #print("summ ", summ)
+        #yy = tf.div(onlyCand,summ)
+         #print(yy)
+         #return yy
+
         return y
     outputs = None
     return outputs
@@ -83,6 +96,7 @@ def get_outputs(inputs, params):
 
     story = inputs['story']
     query = inputs['query']
+    candidates = inputs['candidates']
 
     batch_size = tf.shape(story)[0]
 
@@ -158,6 +172,7 @@ def get_outputs(inputs, params):
            encoded_query=encoded_query,
             num_blocks=num_blocks,
             vocab_size=vocab_size,
+            candidates=candidates,
             initializer=normal_initializer,
             activation=activation)
 
@@ -175,8 +190,8 @@ def get_predictions(outputs, candidates):
     ### In these two steps of getting indecies by an index array, we fix the index list to let it match the flattened arrays
     ### then we flatten both arrays, use tf.gather then reshape again
     
-    candsize = candidates.shape[2].value
-    candidates = tf.reshape(candidates,[-1,candsize])
+    candsize = candidates.shape[1].value
+    #candidates = tf.reshape(candidates,[-1,candsize])
   
     vocsize = outputs.shape[1]
 
