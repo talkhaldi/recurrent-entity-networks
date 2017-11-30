@@ -22,6 +22,23 @@ OPTIMIZER_SUMMARIES = [
     "gradient_norm",
 ]
 
+def get_input_encoding_for_gate(inputs, initializer=None, scope=None):
+    """
+    Implementation of the learned multiplicative mask from Section 2.1, Equation 1.
+    This module is also described in [End-To-End Memory Networks](https://arxiv.org/abs/1502.01852)
+    as Position Encoding (PE). The mask allows the ordering of words in a sentence to affect the
+    encoding.
+    """
+    with tf.variable_scope(scope, 'Encoding', initializer=initializer):
+        _, _, max_sentence_length, embedding_size = inputs.get_shape().as_list()
+        positional_mask = tf.get_variable(
+            name='positional_mask2',
+            shape=[max_sentence_length, embedding_size])
+
+        encoded_input = tf.reduce_sum(inputs * positional_mask, axis=2)
+        return encoded_input
+
+
 def get_input_encoding(inputs, initializer=None, scope=None):
     """
     Implementation of the learned multiplicative mask from Section 2.1, Equation 1.
@@ -34,6 +51,7 @@ def get_input_encoding(inputs, initializer=None, scope=None):
         positional_mask = tf.get_variable(
             name='positional_mask',
             shape=[max_sentence_length, embedding_size])
+        
         encoded_input = tf.reduce_sum(inputs * positional_mask, axis=2)
         return encoded_input
 
@@ -96,6 +114,7 @@ def get_outputs(inputs, params):
 
     story = inputs['story']
     query = inputs['query']
+    print("story ", story)
     candidates = inputs['candidates']
 
     batch_size = tf.shape(story)[0]
@@ -120,6 +139,7 @@ def get_outputs(inputs, params):
         embedding_params = tf.get_variable(
             name='embedding_params',
             shape=[vocab_size, embedding_size])
+        embedding_params = tf.nn.dropout(embedding_params, 0.5)
 
         # The embedding mask forces the special "pad" embedding to zeros.
         embedding_mask = tf.constant(
@@ -130,12 +150,18 @@ def get_outputs(inputs, params):
 
         story_embedding = tf.nn.embedding_lookup(embedding_params_masked, story)
         query_embedding = tf.nn.embedding_lookup(embedding_params_masked, query)
-
+        print("story embedding ", story_embedding)
+        print("story embedding ", story_embedding)
+        
         # Input Module
         encoded_story = get_input_encoding(
             inputs=story_embedding,
             initializer=ones_initializer,
             scope='StoryEncoding')
+        encoded_story_for_gate = get_input_encoding_for_gate(
+            inputs=story_embedding,
+            initializer=ones_initializer,
+            scope='StoryEncoding_for_gate')
         encoded_query = get_input_encoding(
             inputs=query_embedding,
             initializer=ones_initializer,
@@ -144,11 +170,15 @@ def get_outputs(inputs, params):
         # Memory Module
         # We define the keys outside of the cell so they may be used for memory initialization.
         # Keys are initialized to a range outside of the main vocab.
-        keys = [key for key in range(vocab_size - num_blocks, vocab_size)]
-        keys = tf.nn.embedding_lookup(embedding_params_masked, keys)
+        print('model candidates', candidates)
+        #keys = [key for key in range(vocab_size - num_blocks, vocab_size)]
+        
+        keys = tf.nn.embedding_lookup(embedding_params_masked, candidates)
+        print("keys ", keys)
         keys = tf.split(keys, num_blocks, axis=0)
+        print("split keys ", keys)
         keys = [tf.squeeze(key, axis=0) for key in keys]
-
+        print("squeezed keys ", keys)
         cell = DynamicMemoryCell(
             num_blocks=num_blocks,
             num_units_per_block=embedding_size,
@@ -157,12 +187,14 @@ def get_outputs(inputs, params):
             recurrent_initializer=normal_initializer,
             activation=activation)
 
+        inputcat = tf.concat([encoded_story, encoded_story_for_gate], axis=0)
+ 
         # Recurrence
         initial_state = cell.zero_state(batch_size, tf.float32)
         sequence_length = get_sequence_length(encoded_story)
         _, last_state = tf.nn.dynamic_rnn(
             cell=cell,
-            inputs=encoded_story,
+            inputs=inputcat,
             sequence_length=sequence_length,
             initial_state=initial_state)
 

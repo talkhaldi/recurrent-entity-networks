@@ -77,11 +77,11 @@ class DynamicMemoryCell(tf.contrib.rnn.RNNCell):
 
             # Split the hidden state into blocks (each U, V, W are shared across blocks).
             state = tf.split(state, self._num_blocks, axis=1)
-
+            inputs, inputs_gate = tf.split(inputs, 2, axis=0)
             next_states = []
             for j, state_j in enumerate(state): # Hidden State (j)
                 key_j = tf.expand_dims(self._keys[j], axis=0)
-                gate_j = self.get_gate(state_j, key_j, inputs)
+                gate_j = self.get_gate(state_j, key_j, inputs_gate)
                 candidate_j = self.get_candidate(state_j, key_j, inputs, U, V, W, U_bias)
 
                 # Equation 4: h_j <- h_j + g_j * h_j^~

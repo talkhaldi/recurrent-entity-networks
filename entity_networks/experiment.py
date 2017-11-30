@@ -12,7 +12,7 @@ from entity_networks.serving import generate_serving_input_fn
 from entity_networks.model import model_fn
 
 BATCH_SIZE = 32
-NUM_BLOCKS = 30
+NUM_BLOCKS = 10
 EMBEDDING_SIZE = 100
 CLIP_GRADIENTS = 40.0
 
