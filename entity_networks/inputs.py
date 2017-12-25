@@ -46,6 +46,7 @@ def generate_input_fn(filename, metadata, batch_size, num_epochs=None, shuffle=F
             query = record_features['query']
             answer = record_features['answer']
             candidates = record_features['candidates']
+	    print("input candi ", candidates)
             candidates = tf.reshape(candidates, [-1, max_candidates_length])
 
             features = {

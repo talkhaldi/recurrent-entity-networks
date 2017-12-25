@@ -38,8 +38,13 @@ class DynamicMemoryCell(tf.contrib.rnn.RNNCell):
 
     def zero_state(self, batch_size, dtype):
         "Initialize the memory to the key values."
-        zero_state = tf.concat([tf.expand_dims(key, axis=0) for key in self._keys], axis=1)
-        zero_state_batch = tf.tile(zero_state, [batch_size, 1])
+        #zero_state = tf.concat([tf.expand_dims(key, axis=0) for key in self._keys], axis=1)
+        #print("zs ", zero_state)
+        #zero_state_batch = tf.tile(zero_state, [batch_size, 1])
+        zero_state_batch = tf.reshape(self._keys,[batch_size,tf.shape(self._keys)[1]*tf.shape(self._keys)[2]])
+        #print("zero state batch", zero_state_batch)
+
+        #return self._keys
         return zero_state_batch
 
     def get_gate(self, state_j, key_j, inputs):
@@ -77,10 +82,14 @@ class DynamicMemoryCell(tf.contrib.rnn.RNNCell):
 
             # Split the hidden state into blocks (each U, V, W are shared across blocks).
             state = tf.split(state, self._num_blocks, axis=1)
-            inputs, inputs_gate = tf.split(inputs, 2, axis=0)
+            print("in cell ", inputs)
+	    #inputs = tf.reshape(inputs,[tf.shape(inputs)[0]*2, -1])
+	    #print("after reshape ", inputs)
+            inputs, inputs_gate = tf.split(inputs, 2, axis=1)
             next_states = []
             for j, state_j in enumerate(state): # Hidden State (j)
-                key_j = tf.expand_dims(self._keys[j], axis=0)
+                key_j = tf.squeeze(tf.gather(self._keys,[j], axis=1),axis=1)
+		#key_j = tf.expand_dims(self._keys[j], axis=0)
                 gate_j = self.get_gate(state_j, key_j, inputs_gate)
                 candidate_j = self.get_candidate(state_j, key_j, inputs, U, V, W, U_bias)
 
@@ -103,4 +112,5 @@ class DynamicMemoryCell(tf.contrib.rnn.RNNCell):
 
                 next_states.append(state_j_next)
             state_next = tf.concat(next_states, axis=1)
+	    #inputcat = tf.concat([encoded_story, encoded_story_for_gate], axis=0)
         return state_next, state_next

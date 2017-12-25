@@ -5,6 +5,7 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import division
 
+import sys
 import os
 import re
 import json
@@ -15,23 +16,25 @@ from tqdm import tqdm
 
 FLAGS = tf.app.flags.FLAGS
 
-tf.app.flags.DEFINE_string('output_dir', '../CBT/data/records/', 'Dataset destination.')
+tf.app.flags.DEFINE_string('output_dir', '../CBT/data/records-tranctst', 'Dataset destination.')
 
 SPLIT_RE = re.compile(r'(\W+)?')
 
 PAD_TOKEN = '_PAD'
 PAD_ID = 0
-
+shortdataset = 2000
 def tokenize(sentence):
     "Tokenize a string by splitting on non-word characters and stripping whitespace."
     return [token.strip().lower() for token in re.split(SPLIT_RE, sentence) if token.strip()]
 
-def parse_stories(lines, only_supporting=False):
+def parse_stories(lines):
     """
     Parse the CBT format described here: https://research.fb.com/downloads/babi/
     """
     stories = []
     story = []
+    #size of half window where for candidate c of length 1,  w + 1 + w = window size
+    w = 0 
     for line in lines:
         line = line.decode('utf-8').strip()
         if not line:
@@ -43,13 +46,25 @@ def parse_stories(lines, only_supporting=False):
         #This is the line containing the query
         if nid == 21:
             query, answer, candidates = filter(None,line.split('\t'))
+            answer = answer.lower()
             query = tokenize(query)
             candidates = [token.strip().lower() for token in candidates.split('|') if token.strip()]
-            substory = [x for x in story if x]
+
+	    substory = []
+	    #Convert the stories to windows of 5 centered with candidate words.
+	    if  w:
+ 		for sent in story:
+                	n = len(sent)
+			for i, x in enumerate(sent):
+			    if x.lower() in candidates:
+				s = sent[max(i-w,0):min(i+1+w,n)]
+				substory.append(s)
+            else:
+            	substory = [x for x in story if x]
             stories.append((substory, query, answer, candidates))
             story.append('')
             #A limit just for making shorter datasets
-            if len(stories) >= 1000:
+            if  shortdataset and len(stories) >= shortdataset:
                break
         else:
             sentence = tokenize(line)
@@ -93,6 +108,8 @@ def tokenize_stories(stories, token_to_id):
         answer = token_to_id[answer]
         candidates = [token_to_id[token] for token in candidates]
         story_ids.append((story, query, answer, candidates))
+        if answer not in candidates:
+              print(candidates)
     return story_ids
 
 def get_tokenizer(stories):
@@ -128,8 +145,10 @@ def pad_stories(stories, max_sentence_length, max_story_length, max_query_length
 def truncate_stories(stories, max_length):
     "Truncate a story to the specified maximum length."
     stories_truncated = []
+    print("max_length ", max_length)
     for story, query, answer, candidates in stories:
-        story_truncated = story[-max_length:]
+        print("story len ", len(story))
+	story_truncated = story[-max_length:]
         stories_truncated.append((story_truncated, query, answer, candidates))
     return stories_truncated
 
@@ -159,13 +178,15 @@ def main():
         'P',
         'V',
     ]
-
-    task_sizes = [
-        120769,
-        108719,
-        334030,
-        105825,
-    ]
+    if not shortdataset:
+    	task_sizes = [
+       	 120769,
+       	 108719,
+       	 334030,
+       	 105825,
+    	]
+    else:
+	task_sizes = [shortdataset]*4
 
     for task_id, task_name, task_title, task_size in tqdm(zip(task_ids, task_names, task_titles, task_sizes), \
             desc='Processing datasets into records...'):
@@ -175,7 +196,7 @@ def main():
         dataset_path_test = os.path.join(FLAGS.output_dir, task_id + '_test.tfrecords')
         metadata_path = os.path.join(FLAGS.output_dir, task_id + '.json')
 
-        truncated_story_length = 70
+        truncated_story_length = 200
 
         f_train = open(stories_path_train)
         f_test = open(stories_path_test)

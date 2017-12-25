@@ -13,7 +13,7 @@ from entity_networks.model import model_fn
 
 BATCH_SIZE = 32
 NUM_BLOCKS = 10
-EMBEDDING_SIZE = 100
+EMBEDDING_SIZE = 300
 CLIP_GRADIENTS = 40.0
 
 def generate_experiment_fn(data_dir, dataset_id, num_epochs,
