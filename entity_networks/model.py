@@ -389,24 +389,21 @@ def model_fn(features, labels, mode, params):
     "Return ModelFnOps for use with Estimator."
     features['candidates'] = tf.reshape(features['candidates'], [-1, 10])    
     candidates = features['candidates']
-    print("model fn", candidates)
-    kk =tf.equal(candidates, tf.reshape(labels, [-1,1]))
-    #sess = tf.Session()
-    #print(sess.run(kk))
-    #print("kk ", kk)
-    k = tf.where(kk)
-    labels = k[:,1]
-    labels = tf.reshape(labels, [-1])
+    #print("model label ", labels)
+    #print("model fn", candidates)
+    if not labels == None:
+	kk =tf.equal(candidates, tf.reshape(labels, [-1,1]))
+    	k = tf.where(kk)
+    	labels = k[:,1]
+    	labels = tf.reshape(labels, [-1])
     
-
-
     outputs = get_outputs(features, params)
     
     predictions = get_predictions(outputs, candidates)
      
-    assertop = tf.Assert(tf.less_equal(tf.reduce_max(labels), 9), [labels])
-    with tf.control_dependencies([assertop]):
-        loss = get_loss(outputs, labels, mode)
+   # assertop = tf.Assert(tf.less_equal(tf.reduce_max(labels), 9), [labels])
+    #with tf.control_dependencies([assertop]):
+    loss = get_loss(outputs, labels, mode)
     #print("trainable? ", tf.trainable_variables())
     train_op = get_train_op(loss, params, mode)
     return tf.contrib.learn.ModelFnOps(
