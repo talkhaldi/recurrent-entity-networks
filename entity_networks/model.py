@@ -62,41 +62,48 @@ def get_output_module(
         vocab_size,
         candidates,
         activation=tf.nn.relu,
-        initializer=None,
+        #activation=tf.identity,
+	initializer=None,
         scope=None):
     """
     Implementation of Section 2.3, Equation 6. This module is also described in more detail here:
     [End-To-End Memory Networks](https://arxiv.org/abs/1502.01852).
     """
+    print("vocab size ", vocab_size)
     with tf.variable_scope(scope, 'Output', initializer=initializer):
+	print(last_state)
         last_state = tf.stack(tf.split(last_state, num_blocks, axis=1), axis=1)
         _, _, embedding_size = last_state.get_shape().as_list()
-
+	print(last_state)
         # Use the encoded_query to attend over memories
         # (hidden states of dynamic last_state cell blocks)
         attention = tf.reduce_sum(last_state * encoded_query, axis=2)
 	return attention
-        # Subtract max for numerical stability (softmax is shift invariant)
+        #I ignore all below testing code for now.
+	
+	# Subtract max for numerical stability (softmax is shift invariant)
         attention_max = tf.reduce_max(attention, axis=-1, keep_dims=True)
-        #attention = tf.nn.softmax(attention - attention_max)
-        attention = attention - attention_max 
+        attention = tf.nn.softmax(attention - attention_max)
+        #attention = attention - attention_max 
         #with tf.train.SingularMonitoredSession() as sess:
 		#sess.run(tf.global_variables_initializer())
 	#	sess.run(attention)
-        return attention
+        #return attention
         #print("attention ", attention)
-        #attention = tf.expand_dims(attention, axis=2)
+        attention = tf.expand_dims(attention, axis=2)
 
         # Weight memories by attention vectors
-        #u = tf.reduce_sum(last_state * attention, axis=1)
+        u = tf.reduce_sum(last_state * attention, axis=1)
 
         # R acts as the decoder matrix to convert from internal state to the output vocabulary size
-        #R = tf.get_variable('R', [embedding_size, vocab_size])
-        #H = tf.get_variable('H', [embedding_size, embedding_size])
+        #embedding_size = 100 just testing something
+	R = tf.get_variable('R', [embedding_size, vocab_size])
+        H = tf.get_variable('H', [embedding_size, embedding_size])
 
-        #q = tf.squeeze(encoded_query, axis=1)
-        #y = tf.matmul(activation(q + tf.matmul(u, H)) , R)
-        #Normalize the candidates only and set everything else to 0
+        q = tf.squeeze(encoded_query, axis=1)
+        y = tf.matmul(activation(q + tf.matmul(u, H)) , R)
+        return y
+	#Normalize the candidates only and set everything else to 0
         #k_hot = tf.reduce_max(tf.one_hot(candidates, vocab_size),axis=1)
          #print("k-hot ", k_hot)
         #onlyCand = y*k_hot
@@ -165,10 +172,10 @@ def get_output_module(
         #init = tf.fill(tf.stack([tf.shape(candidates, out_type=tf.int32)[0],tf.constant(vocab_size, dtype=tf.int32)],axis=0),tf.constant(-1000, dtype=tf.float32))
         
         updated = tf.sparse_add(init, sparse)
-
+	print("updated ", updated)
         #y = tf.scatter_nd_add(zr, ind, tf.reshape(attention,[-1]))
         #print(updated)
-        return updated
+        return tf.log(updated)
     outputs = None
     return outputs
 
@@ -177,9 +184,9 @@ def get_outputs(inputs, params):
     embedding_size = params['embedding_size']
     num_blocks = params['num_blocks']
     vocab_size = params['vocab_size']
-
     story = inputs['story']
     query = inputs['query']
+    is_general = params['is_general']
     candidates = inputs['candidates']
     print("get outputs candi ", candidates)
     batch_size = tf.shape(story)[0]
@@ -189,7 +196,7 @@ def get_outputs(inputs, params):
 
     # Extend the vocab to include keys for the dynamic memory cell,
     # allowing the initialization of the memory to be learned.
-    vocab_size = vocab_size + num_blocks
+    #vocab_size = vocab_size + num_blocks
 
     with tf.variable_scope('EntityNetwork', initializer=normal_initializer):
         # PReLU activations have their alpha parameters initialized to 1
@@ -198,7 +205,10 @@ def get_outputs(inputs, params):
             name='alpha',
             shape=embedding_size,
             initializer=ones_initializer)
-        activation = partial(prelu, alpha=alpha)
+        if is_general:
+		activation = partial(prelu, alpha=alpha)
+	else:
+		activation = tf.identity
 
         # Embeddings
         embedding_params = tf.get_variable(
@@ -232,7 +242,7 @@ def get_outputs(inputs, params):
             inputs=query_embedding,
             initializer=ones_initializer,
             scope='QueryEncoding')
-        
+	print("encoded query ", encoded_query)        
         # Memory Module
         # We define the keys outside of the cell so they may be used for memory initialization.
         # Keys are initialized to a range outside of the main vocab.
@@ -251,12 +261,14 @@ def get_outputs(inputs, params):
             keys=keys,
             initializer=normal_initializer,
             recurrent_initializer=normal_initializer,
-            activation=activation)
+            activation=activation,
+	    is_general=is_general)
         print(encoded_story)
         print(encoded_story.get_shape())
         inputcat = tf.concat([encoded_story, encoded_story_for_gate], axis=2)
         #inputcat = tf.reshape(inputcat,[tf.shape(encoded_story)[0],encoded_story.get_shape()[1], encoded_story.get_shape()[2]*2])
-        print("inputcat ", inputcat)
+        print(cell.output_size)
+	print("inputcat ", inputcat)
         # Recurrence
         initial_state = cell.zero_state(batch_size, tf.float32)
         sequence_length = get_sequence_length(encoded_story)
@@ -281,7 +293,6 @@ def get_outputs(inputs, params):
             inputs=inputcat,
             sequence_length=sequence_length,
             initial_state=initial_state)
- 	#print("last state ", last_state)
         # Output Module
         outputs = get_output_module(
             last_state=last_state,
@@ -300,6 +311,7 @@ def get_outputs(inputs, params):
 def get_predictions(outputs, candidates):
     "Return the actual predictions for use with evaluation metrics or TF Serving."
     
+    #return tf.argmax(outputs,axis=-1) 
     ### The update here is that, since CBT has 10 candidates, we select them from the vocabsized softmax,
     ### we argmax over the probabilites of the 10 candidates, selecting the index of the highest one.
     ### Then we retreive the original softmax index through the candidates index list.
@@ -378,7 +390,7 @@ def get_train_op(loss, params, mode):
         loss=loss,
         global_step=global_step,
         learning_rate=learning_rate,
-        optimizer='SGD',
+        optimizer='Adam',
         clip_gradients=params['clip_gradients'],
         gradient_noise_scale=params['gradient_noise_scale'],
         summaries=OPTIMIZER_SUMMARIES)
@@ -391,6 +403,8 @@ def model_fn(features, labels, mode, params):
     candidates = features['candidates']
     #print("model label ", labels)
     #print("model fn", candidates)
+    #orglabels = labels
+    
     if not labels == None:
 	kk =tf.equal(candidates, tf.reshape(labels, [-1,1]))
     	k = tf.where(kk)
@@ -401,7 +415,7 @@ def model_fn(features, labels, mode, params):
     
     predictions = get_predictions(outputs, candidates)
      
-   # assertop = tf.Assert(tf.less_equal(tf.reduce_max(labels), 9), [labels])
+    #assertop = tf.Assert(tf.equal(tf.shape(labels)[0], 64), [labels, orglabels, candidates, tf.shape(labels)[0], tf.shape(orglabels)[0], tf.shape(candidates)[0]], summarize=64)
     #with tf.control_dependencies([assertop]):
     loss = get_loss(outputs, labels, mode)
     #print("trainable? ", tf.trainable_variables())

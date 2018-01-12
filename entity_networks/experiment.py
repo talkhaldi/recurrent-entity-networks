@@ -11,17 +11,18 @@ from entity_networks.inputs import generate_input_fn
 from entity_networks.serving import generate_serving_input_fn
 from entity_networks.model import model_fn
 
-BATCH_SIZE = 32
+BATCH_SIZE = 64
 NUM_BLOCKS = 10
-EMBEDDING_SIZE = 300
+EMBEDDING_SIZE = 100
 CLIP_GRADIENTS = 40.0
 
 def generate_experiment_fn(data_dir, dataset_id, num_epochs,
                            learning_rate_min, learning_rate_max,
-                           learning_rate_step_size, gradient_noise_scale):
+                           learning_rate_step_size, gradient_noise_scale,
+			   is_general):
     "Return _experiment_fn for use with learn_runner."
     def _experiment_fn(output_dir):
-        metadata_path = os.path.join(data_dir, '{}.json'.format(dataset_id))
+	metadata_path = os.path.join(data_dir, '{}.json'.format(dataset_id))
         with tf.gfile.Open(metadata_path) as metadata_file:
             metadata = json.load(metadata_file)
 
@@ -60,6 +61,7 @@ def generate_experiment_fn(data_dir, dataset_id, num_epochs,
             'learning_rate_step_size': learning_rate_step_size * train_steps_per_epoch,
             'clip_gradients': CLIP_GRADIENTS,
             'gradient_noise_scale': gradient_noise_scale,
+	    'is_general': is_general
         }
 
         estimator = tf.contrib.learn.Estimator(

@@ -18,13 +18,15 @@ class DynamicMemoryCell(tf.contrib.rnn.RNNCell):
                  keys,
                  initializer=None,
                  recurrent_initializer=None,
-                 activation=tf.nn.relu):
+                 activation=tf.nn.relu,
+		 is_general):
         self._num_blocks = num_blocks # M
         self._num_units_per_block = num_units_per_block # d
         self._keys = keys
         self._activation = activation # \phi
         self._initializer = initializer
         self._recurrent_initializer = recurrent_initializer
+	self._is_general = is_general
 
     @property
     def state_size(self):
@@ -64,10 +66,14 @@ class DynamicMemoryCell(tf.contrib.rnn.RNNCell):
 
         h_j^~ <- \phi(U h_j + V w_j + W s_t)
         """
-        key_V = tf.matmul(key_j, V)
-        state_U = tf.matmul(state_j, U) + U_bias
-        inputs_W = tf.matmul(inputs, W)
-        return self._activation(state_U + inputs_W + key_V)
+	if is_general:
+		key_V = tf.matmul(key_j, V)
+        	state_U = tf.matmul(state_j, U) + U_bias
+        	inputs_W = tf.matmul(inputs, W)
+        	return self._activation(state_U + inputs_W + key_V)
+	else:
+		#Changing it to the simplified version as in the paper
+		return self._activation(inputs)
 
     def __call__(self, inputs, state, scope=None):
         with tf.variable_scope(scope or type(self).__name__, initializer=self._initializer):
@@ -99,16 +105,17 @@ class DynamicMemoryCell(tf.contrib.rnn.RNNCell):
 
                 # Equation 5: h_j <- h_j / \norm{h_j}
                 # Forget previous memories by normalization.
-                state_j_next_norm = tf.norm(
-                    tensor=state_j_next,
-                    ord='euclidean',
-                    axis=-1,
-                    keep_dims=True)
-                state_j_next_norm = tf.where(
-                    tf.greater(state_j_next_norm, 0.0),
-                    state_j_next_norm,
-                    tf.ones_like(state_j_next_norm))
-                state_j_next = state_j_next / state_j_next_norm
+                if is_general:
+		    state_j_next_norm = tf.norm(
+                   	 tensor=state_j_next,
+           	         ord='euclidean',
+           	         axis=-1,
+           	         keep_dims=True)
+           	    state_j_next_norm = tf.where(
+           	         tf.greater(state_j_next_norm, 0.0),
+           	         state_j_next_norm,
+           	         tf.ones_like(state_j_next_norm))
+           	    state_j_next = state_j_next / state_j_next_norm
 
                 next_states.append(state_j_next)
             state_next = tf.concat(next_states, axis=1)

@@ -16,13 +16,13 @@ from tqdm import tqdm
 
 FLAGS = tf.app.flags.FLAGS
 
-tf.app.flags.DEFINE_string('output_dir', '../CBT/data/records-tranctst', 'Dataset destination.')
+tf.app.flags.DEFINE_string('output_dir', 'CBT/data/records-100', 'Dataset destination.')
 
 SPLIT_RE = re.compile(r'(\W+)?')
 
 PAD_TOKEN = '_PAD'
 PAD_ID = 0
-shortdataset = 2000
+shortdataset = 100
 def tokenize(sentence):
     "Tokenize a string by splitting on non-word characters and stripping whitespace."
     return [token.strip().lower() for token in re.split(SPLIT_RE, sentence) if token.strip()]
@@ -34,7 +34,7 @@ def parse_stories(lines):
     stories = []
     story = []
     #size of half window where for candidate c of length 1,  w + 1 + w = window size
-    w = 0 
+    w = 2
     for line in lines:
         line = line.decode('utf-8').strip()
         if not line:
@@ -49,7 +49,10 @@ def parse_stories(lines):
             answer = answer.lower()
             query = tokenize(query)
             candidates = [token.strip().lower() for token in candidates.split('|') if token.strip()]
-
+	    if len(set([len(z.split()) for z in candidates])) > 1:
+		print(candidates)
+	    if not answer in candidates:
+		print(candidates, answer)
 	    substory = []
 	    #Convert the stories to windows of 5 centered with candidate words.
 	    if  w:
@@ -147,7 +150,6 @@ def truncate_stories(stories, max_length):
     stories_truncated = []
     print("max_length ", max_length)
     for story, query, answer, candidates in stories:
-        print("story len ", len(story))
 	story_truncated = story[-max_length:]
         stories_truncated.append((story_truncated, query, answer, candidates))
     return stories_truncated
@@ -161,37 +163,37 @@ def main():
     task_names = [
         'CN',
         'NE',
-        'P',
-        'V',
+    #    'P',
+    #    'V',
     ]
 
     task_titles = [
         'Common Names',
         'Named Entities',
-        'Prepositions',
-        'Verbs',
+    #    'Prepositions',
+    #    'Verbs',
     ]
 
     task_ids = [
         'CN',
         'NE',
-        'P',
-        'V',
+    #    'P',
+    #    'V',
     ]
     if not shortdataset:
     	task_sizes = [
        	 120769,
        	 108719,
-       	 334030,
-       	 105825,
+    #   	 334030,
+    #   	 105825,
     	]
     else:
-	task_sizes = [shortdataset]*4
+	task_sizes = [shortdataset]*2
 
     for task_id, task_name, task_title, task_size in tqdm(zip(task_ids, task_names, task_titles, task_sizes), \
             desc='Processing datasets into records...'):
-        stories_path_train = os.path.join('../CBT/data/','cbtest_' + task_name + '_train.txt')
-        stories_path_test = os.path.join('../CBT/data/','cbtest_' + task_name + '_test_2500ex.txt')
+        stories_path_train = os.path.join('CBT/data/','cbtest_' + task_name + '_train.txt')
+        stories_path_test = os.path.join('CBT/data/','cbtest_' + task_name + '_test_2500ex.txt')
         dataset_path_train = os.path.join(FLAGS.output_dir, task_id + '_train.tfrecords')
         dataset_path_test = os.path.join(FLAGS.output_dir, task_id + '_test.tfrecords')
         metadata_path = os.path.join(FLAGS.output_dir, task_id + '.json')
@@ -209,7 +211,6 @@ def main():
 
         vocab, token_to_id = get_tokenizer(stories_train + stories_test)
         vocab_size = len(vocab)
-
         stories_token_train = tokenize_stories(stories_train, token_to_id)
         stories_token_test = tokenize_stories(stories_test, token_to_id)
         stories_token_all = stories_token_train + stories_token_test

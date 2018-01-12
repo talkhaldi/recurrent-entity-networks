@@ -18,7 +18,8 @@ def main():
     parser.add_argument(
         '--data-dir',
         help='Directory containing data',
-        default='CBT/data/records/')
+        required=True)
+#default='CBT/data/records/')
     parser.add_argument(
         '--dataset-id',
         help='Unique id identifying dataset',
@@ -57,7 +58,10 @@ def main():
         help='GPU ID to use',
         default=0,
         type=int)
-
+    parser.add_argument(
+        '--general',
+        help='Uses the general model instead of the simplified one.',
+        action='store_true')
     args = parser.parse_args()
 
     os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
@@ -65,7 +69,8 @@ def main():
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
     tf.logging.set_verbosity(tf.logging.INFO)
-
+    print(args.general)
+    
     experiment_fn = generate_experiment_fn(
         data_dir=args.data_dir,
         dataset_id=args.dataset_id,
@@ -73,7 +78,8 @@ def main():
         learning_rate_min=args.lr_min,
         learning_rate_max=args.lr_max,
         learning_rate_step_size=args.lr_step_size,
-        gradient_noise_scale=args.grad_noise)
+        gradient_noise_scale=args.grad_noise,
+	is_general=args.general)
     learn_runner.run(experiment_fn, args.job_dir)
 
 if __name__ == '__main__':
