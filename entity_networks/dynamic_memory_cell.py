@@ -16,10 +16,10 @@ class DynamicMemoryCell(tf.contrib.rnn.RNNCell):
                  num_blocks,
                  num_units_per_block,
                  keys,
+		 is_general,
                  initializer=None,
                  recurrent_initializer=None,
-                 activation=tf.nn.relu,
-		 is_general):
+                 activation=tf.nn.relu):
         self._num_blocks = num_blocks # M
         self._num_units_per_block = num_units_per_block # d
         self._keys = keys
