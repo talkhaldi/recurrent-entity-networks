@@ -66,7 +66,7 @@ class DynamicMemoryCell(tf.contrib.rnn.RNNCell):
 
         h_j^~ <- \phi(U h_j + V w_j + W s_t)
         """
-	if is_general:
+	if self._is_general:
 		key_V = tf.matmul(key_j, V)
         	state_U = tf.matmul(state_j, U) + U_bias
         	inputs_W = tf.matmul(inputs, W)
@@ -105,7 +105,7 @@ class DynamicMemoryCell(tf.contrib.rnn.RNNCell):
 
                 # Equation 5: h_j <- h_j / \norm{h_j}
                 # Forget previous memories by normalization.
-                if is_general:
+                if self._is_general:
 		    state_j_next_norm = tf.norm(
                    	 tensor=state_j_next,
            	         ord='euclidean',

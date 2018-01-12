@@ -16,13 +16,13 @@ from tqdm import tqdm
 
 FLAGS = tf.app.flags.FLAGS
 
-tf.app.flags.DEFINE_string('output_dir', 'CBT/data/records-100', 'Dataset destination.')
+tf.app.flags.DEFINE_string('output_dir', 'CBT/data/records-win5', 'Dataset destination.')
 
 SPLIT_RE = re.compile(r'(\W+)?')
 
 PAD_TOKEN = '_PAD'
 PAD_ID = 0
-shortdataset = 100
+shortdataset = 0
 def tokenize(sentence):
     "Tokenize a string by splitting on non-word characters and stripping whitespace."
     return [token.strip().lower() for token in re.split(SPLIT_RE, sentence) if token.strip()]
@@ -148,7 +148,6 @@ def pad_stories(stories, max_sentence_length, max_story_length, max_query_length
 def truncate_stories(stories, max_length):
     "Truncate a story to the specified maximum length."
     stories_truncated = []
-    print("max_length ", max_length)
     for story, query, answer, candidates in stories:
 	story_truncated = story[-max_length:]
         stories_truncated.append((story_truncated, query, answer, candidates))
